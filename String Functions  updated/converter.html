@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Case Converter</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React Libraries -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <!-- Babel to transpile JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-900">
+    <!-- The root element where the React app will be mounted -->
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Your React code is placed directly inside this script tag
+        
+        const { useState, useCallback } = React;
+
+        // Main App Component
+        function App() {
+          // State to hold the generated markdown content
+          const [markdown, setMarkdown] = useState('');
+          // State to manage the visual feedback for drag-and-drop
+          const [isDragging, setIsDragging] = useState(false);
+
+          // --- File Processing Logic ---
+          const handleFileProcessing = useCallback(async (files) => {
+            // Group files by their base name (e.g., '1', '2')
+            const filePairs = {};
+            for (const file of files) {
+              const name = file.name.split('.')[0];
+              const extension = file.name.split('.').pop();
+              if (!filePairs[name]) {
+                filePairs[name] = {};
+              }
+              if (extension === 'in' || extension === 'txt') {
+                filePairs[name].input = file;
+              } else if (extension === 'out') {
+                filePairs[name].output = file;
+              }
+            }
+
+            let generatedMarkdown = "## Hidden Test Cases\n\n";
+            const sortedKeys = Object.keys(filePairs).sort((a, b) => parseInt(a) - parseInt(b));
+
+            // Process each pair of files
+            for (const key of sortedKeys) {
+              const pair = filePairs[key];
+              if (pair.input && pair.output) {
+                try {
+                  // Read file contents asynchronously
+                  const inputContent = await pair.input.text();
+                  const outputContent = await pair.output.text();
+                  
+                  // Format the content into Markdown
+                  generatedMarkdown += `### Test Case ${key}\n`;
+                  generatedMarkdown += `**Input**\n\`\`\`\n${inputContent.trim()}\n\`\`\`\n`;
+                  generatedMarkdown += `**Expected Output**\n\`\`\`\n${outputContent.trim()}\n\`\`\`\n\n---\n\n`;
+                } catch (error) {
+                  console.error("Error reading file:", error);
+                  // Optionally, update UI to show an error message
+                }
+              }
+            }
+            
+            // Update state with the final markdown string
+            setMarkdown(generatedMarkdown);
+          }, []);
+
+          // --- Event Handlers for Drag and Drop ---
+          const handleDragEnter = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(true);
+          };
+
+          const handleDragLeave = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(false);
+          };
+
+          const handleDragOver = (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Necessary to allow drop
+          };
+
+          const handleDrop = useCallback((e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(false);
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+              handleFileProcessing(Array.from(files));
+            }
+          }, [handleFileProcessing]);
+
+          // --- Event Handler for Manual File Input ---
+          const handleFileInput = (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+              handleFileProcessing(Array.from(files));
+            }
+          };
+          
+          // --- Download Logic ---
+          const handleDownload = () => {
+            if (!markdown) return;
+            // Create a blob from the markdown content
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            // Create a temporary URL for the blob
+            const url = URL.createObjectURL(blob);
+            // Create a temporary link to trigger the download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hidden_test_cases.md';
+            document.body.appendChild(a);
+            a.click();
+            // Clean up the temporary link and URL
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          };
+
+          // --- Component Rendering ---
+          return (
+            <div className="bg-slate-900 text-white min-h-screen p-4 sm:p-6 md:p-8 font-sans flex flex-col items-center">
+              <div className="w-full max-w-4xl">
+                {/* Header */}
+                <header className="text-center mb-8">
+                  <h1 className="text-4xl font-bold text-cyan-400">Test Case Converter</h1>
+                  <p className="text-slate-400 mt-2">Upload `.in` and `.out` files to generate a Markdown test case document.</p>
+                </header>
+
+                {/* File Upload Area */}
+                <div 
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors duration-300 ${isDragging ? 'border-cyan-400 bg-slate-800' : 'border-slate-600 hover:border-cyan-500'}`}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    id="file-upload"
+                    className="hidden"
+                    onChange={handleFileInput}
+                    accept=".in,.out,.txt"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <p className="text-lg">Drag & drop files here, or click to select files.</p>
+                    <p className="text-sm text-slate-500 mt-1">Accepts `.in`, `.txt`, and `.out` files.</p>
+                  </label>
+                </div>
+
+                {/* Generated Markdown Preview and Download */}
+                {markdown && (
+                  <div className="mt-8">
+                    <h2 className="text-2xl font-semibold mb-4 text-slate-300">Generated Markdown</h2>
+                    <textarea
+                      readOnly
+                      value={markdown}
+                      className="w-full h-96 bg-slate-800 border border-slate-600 rounded-lg p-4 text-sm font-mono focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+                      placeholder="Your generated markdown will appear here..."
+                    />
+                    <div className="text-center mt-6">
+                      <button
+                        onClick={handleDownload}
+                        className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-cyan-500/20 transition-all duration-300 transform hover:scale-105"
+                      >
+                        Download hidden_test_cases.md
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        // Render the App component to the root div
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
