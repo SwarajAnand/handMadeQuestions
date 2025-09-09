@@ -31,7 +31,7 @@ vector<int> prefix_function(const string &s) {
 1000
 
 **MemoryLimit**
-524288
+512 MB
 
 
 ## JAVA
@@ -68,7 +68,7 @@ static int[] prefixFunction(String s) {
 1000
 
 **MemoryLimit**
-524288
+512 MB
 
 ## C
 
@@ -112,7 +112,7 @@ int* prefix_function(const char *s, int n) {
 1000
 
 **MemoryLimit**
-524288
+512 MB
 
 ## JAVASCRIPT
 
@@ -147,7 +147,7 @@ function prefixFunction(s) {
 1000
 
 **MemoryLimit**
-524288
+512 MB
 
 ## python
 
@@ -184,6 +184,6 @@ def prefix_function(s):
 1000
 
 **MemoryLimit**
-524288
+512 MB
 
 ---
